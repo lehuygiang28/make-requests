@@ -45,7 +45,7 @@ jobs:
 
       - name: Deploy requests
         env:
-          TARGET_URLS: ${{ secrets.TARGET_URLS }}
+          TARGET_URLS: ${{ env.TARGET_URLS }}
         run: |
           bun run src/index.ts &
           bun run src/index.ts &
