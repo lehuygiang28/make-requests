@@ -37,7 +37,13 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Deploy bots
+      - name: Check required secrets
+        if: ${{ env.TARGET_URLS == '' }}
+        run: |
+          echo "Error: TARGET_URLS secret is not set"
+          exit 1
+
+      - name: Deploy requests
         env:
           TARGET_URLS: ${{ secrets.TARGET_URLS }}
         run: |
