@@ -81,33 +81,36 @@ async function sendRequests(): Promise<void> {
 
     // Clear console at the start
     console.clear();
+    console.log(chalk.blue.bold('🚀 Starting new batch of requests...'));
 
     const requests = Array(REQUESTS)
         .fill(null)
         .map(() => makeRequest().then(success => {
             if (success) successCount++;
             else failureCount++;
-
-            // Clear and update metrics (using console.clear instead of ANSI escape code)
-            console.clear();
-            console.log(`
-${chalk.blue.bold('🚀 Requests in progress...')}
-${chalk.yellow.bold('📊 Metrics:')}
-${chalk.green('✅ Successful:')} ${chalk.green.bold(successCount)}
-${chalk.red('❌ Failed:')} ${chalk.red.bold(failureCount)}
-${chalk.cyan('⏱️  Time Elapsed:')} ${chalk.cyan.bold(((Date.now() - startTime) / 1000).toFixed(1) + 's')}
-${chalk.magenta('📈 Success Rate:')} ${chalk.magenta.bold(((successCount / (successCount + failureCount)) * 100).toFixed(2) + '%')}
-${chalk.blue('🎯 Target URLs:')} ${chalk.blue.bold(URLS.length)}
-`);
         }));
 
     // Process requests in chunks to manage concurrency
     for (let i = 0; i < requests.length; i += CONCURRENCY) {
         const chunk = requests.slice(i, i + CONCURRENCY);
         await Promise.all(chunk);
+
+        // Update metrics after each chunk
+        const currentTotal = successCount + failureCount;
+        const progress = ((currentTotal / REQUESTS) * 100).toFixed(1);
+        console.clear();
+        console.log(`
+${chalk.blue.bold('🚀 Requests in progress...')}
+${chalk.yellow.bold('📊 Current Progress:')} ${chalk.yellow.bold(progress + '%')}
+${chalk.green('✅ Successful:')} ${chalk.green.bold(successCount)}
+${chalk.red('❌ Failed:')} ${chalk.red.bold(failureCount)}
+${chalk.cyan('⏱️  Time Elapsed:')} ${chalk.cyan.bold(((Date.now() - startTime) / 1000).toFixed(1) + 's')}
+${chalk.magenta('📈 Success Rate:')} ${chalk.magenta.bold(((successCount / currentTotal) * 100).toFixed(2) + '%')}
+${chalk.blue('🎯 Target URLs:')} ${chalk.blue.bold(URLS.length)}
+`);
     }
 
-    // Clear console before final summary
+    // Final summary remains the same
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
     console.clear();
     console.log(`
