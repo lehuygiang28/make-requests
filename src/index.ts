@@ -31,7 +31,17 @@ const getRandomItem = (arr: string[]) => arr[Math.floor(Math.random() * arr.leng
 
 import chalk from 'chalk';
 
-async function makeRequest(): Promise<boolean> {
+// Add new types for tracking request status
+type RequestStatus = {
+    success: number;
+    failed: number;
+    rateLimit: number;
+    blocked: number;
+    networkError: number;
+    timeouts: number;
+};
+
+async function makeRequest(): Promise<keyof RequestStatus> {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -68,59 +78,91 @@ async function makeRequest(): Promise<boolean> {
         });
 
         clearTimeout(timeoutId);
-        return response.ok; // Returns true if status is 2xx
+
+        // Categorize different response types
+        if (response.ok) return 'success';
+        if (response.status === 429) return 'rateLimit';
+        if (response.status === 403) return 'blocked';
+        return 'failed';
     } catch (error) {
-        return false;
+        if (error instanceof Error) {
+            if (error.name === 'AbortError') return 'timeouts';
+            if (error.message.includes('network')) return 'networkError';
+        }
+        return 'failed';
     }
 }
 
 async function sendRequests(): Promise<void> {
-    let successCount = 0;
-    let failureCount = 0;
-    const startTime = Date.now();
+    const stats: RequestStatus = {
+        success: 0,
+        failed: 0,
+        rateLimit: 0,
+        blocked: 0,
+        networkError: 0,
+        timeouts: 0
+    };
 
-    // Clear console at the start
-    console.clear();
-    console.log(chalk.blue.bold('🚀 Starting new batch of requests...'));
+    const startTime = Date.now();
+    let lastLogTime = startTime;
+
+    console.log('::group::Starting new batch of requests...');
 
     const requests = Array(REQUESTS)
         .fill(null)
-        .map(() => makeRequest().then(success => {
-            if (success) successCount++;
-            else failureCount++;
+        .map(() => makeRequest().then(status => {
+            stats[status]++;
+
+            // Update logs every minute
+            const now = Date.now();
+            if (now - lastLogTime >= 60000) {
+                lastLogTime = now;
+                const totalRequests = Object.values(stats).reduce((a, b) => a + b, 0);
+                const elapsedMinutes = ((now - startTime) / 60000).toFixed(1);
+
+                console.log(`
+[Status Report] Time Elapsed: ${elapsedMinutes} minutes
+Progress: ${((totalRequests / REQUESTS) * 100).toFixed(1)}%
+----------------------------------------
+Successful: ${stats.success.toLocaleString()} (${((stats.success / totalRequests) * 100).toFixed(1)}%)
+Failed: ${stats.failed.toLocaleString()} (${((stats.failed / totalRequests) * 100).toFixed(1)}%)
+Rate Limited: ${stats.rateLimit.toLocaleString()} (${((stats.rateLimit / totalRequests) * 100).toFixed(1)}%)
+Blocked: ${stats.blocked.toLocaleString()} (${((stats.blocked / totalRequests) * 100).toFixed(1)}%)
+Network Errors: ${stats.networkError.toLocaleString()} (${((stats.networkError / totalRequests) * 100).toFixed(1)}%)
+Timeouts: ${stats.timeouts.toLocaleString()} (${((stats.timeouts / totalRequests) * 100).toFixed(1)}%)
+----------------------------------------
+Target URLs: ${URLS.length}
+Requests/Minute: ${(totalRequests / parseFloat(elapsedMinutes)).toFixed(0)}
+`);
+            }
         }));
 
-    // Process requests in chunks to manage concurrency
+    // Process requests in chunks
     for (let i = 0; i < requests.length; i += CONCURRENCY) {
         const chunk = requests.slice(i, i + CONCURRENCY);
         await Promise.all(chunk);
-
-        // Update metrics after each chunk
-        const currentTotal = successCount + failureCount;
-        const progress = ((currentTotal / REQUESTS) * 100).toFixed(1);
-        console.clear();
-        console.log(`
-${chalk.blue.bold('🚀 Requests in progress...')}
-${chalk.yellow.bold('📊 Current Progress:')} ${chalk.yellow.bold(progress + '%')}
-${chalk.green('✅ Successful:')} ${chalk.green.bold(successCount)}
-${chalk.red('❌ Failed:')} ${chalk.red.bold(failureCount)}
-${chalk.cyan('⏱️  Time Elapsed:')} ${chalk.cyan.bold(((Date.now() - startTime) / 1000).toFixed(1) + 's')}
-${chalk.magenta('📈 Success Rate:')} ${chalk.magenta.bold(((successCount / currentTotal) * 100).toFixed(2) + '%')}
-${chalk.blue('🎯 Target URLs:')} ${chalk.blue.bold(URLS.length)}
-`);
     }
 
-    // Final summary remains the same
-    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.clear();
+    // Final summary
+    const totalTime = ((Date.now() - startTime) / 60000).toFixed(1);
+    const totalRequests = Object.values(stats).reduce((a, b) => a + b, 0);
+
+    console.log('::endgroup::');
     console.log(`
-${chalk.green.bold('✨ Batch Completed!')}
-${chalk.yellow.bold('📊 Final Results:')}
-${chalk.green('✅ Successful:')} ${chalk.green.bold(successCount)}
-${chalk.red('❌ Failed:')} ${chalk.red.bold(failureCount)}
-${chalk.cyan('⏱️  Total Time:')} ${chalk.cyan.bold(totalTime + 's')}
-${chalk.magenta('📈 Success Rate:')} ${chalk.magenta.bold(((successCount / REQUESTS) * 100).toFixed(2) + '%')}
-${chalk.blue('🎯 Target URLs:')} ${chalk.blue.bold(URLS.length)}
+[Final Results]
+----------------------------------------
+Total Time: ${totalTime} minutes
+Total Requests: ${totalRequests.toLocaleString()}
+----------------------------------------
+Successful: ${stats.success.toLocaleString()} (${((stats.success / totalRequests) * 100).toFixed(1)}%)
+Failed: ${stats.failed.toLocaleString()} (${((stats.failed / totalRequests) * 100).toFixed(1)}%)
+Rate Limited: ${stats.rateLimit.toLocaleString()} (${((stats.rateLimit / totalRequests) * 100).toFixed(1)}%)
+Blocked: ${stats.blocked.toLocaleString()} (${((stats.blocked / totalRequests) * 100).toFixed(1)}%)
+Network Errors: ${stats.networkError.toLocaleString()} (${((stats.networkError / totalRequests) * 100).toFixed(1)}%)
+Timeouts: ${stats.timeouts.toLocaleString()} (${((stats.timeouts / totalRequests) * 100).toFixed(1)}%)
+----------------------------------------
+Target URLs: ${URLS.length}
+Average Requests/Minute: ${(totalRequests / parseFloat(totalTime)).toFixed(0)}
 `);
 }
 
