@@ -79,23 +79,24 @@ async function sendRequests(): Promise<void> {
     let failureCount = 0;
     const startTime = Date.now();
 
+    // Clear console at the start
+    console.clear();
+
     const requests = Array(REQUESTS)
         .fill(null)
         .map(() => makeRequest().then(success => {
             if (success) successCount++;
             else failureCount++;
 
-            // Clear console and update metrics
-            const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
-            const successRate = ((successCount / (successCount + failureCount)) * 100).toFixed(2);
-            process.stdout.write('\x1Bc');
+            // Clear and update metrics (using console.clear instead of ANSI escape code)
+            console.clear();
             console.log(`
 ${chalk.blue.bold('🚀 Requests in progress...')}
 ${chalk.yellow.bold('📊 Metrics:')}
 ${chalk.green('✅ Successful:')} ${chalk.green.bold(successCount)}
 ${chalk.red('❌ Failed:')} ${chalk.red.bold(failureCount)}
-${chalk.cyan('⏱️  Time Elapsed:')} ${chalk.cyan.bold(elapsedTime + 's')}
-${chalk.magenta('📈 Success Rate:')} ${chalk.magenta.bold(successRate + '%')}
+${chalk.cyan('⏱️  Time Elapsed:')} ${chalk.cyan.bold(((Date.now() - startTime) / 1000).toFixed(1) + 's')}
+${chalk.magenta('📈 Success Rate:')} ${chalk.magenta.bold(((successCount / (successCount + failureCount)) * 100).toFixed(2) + '%')}
 ${chalk.blue('🎯 Target URLs:')} ${chalk.blue.bold(URLS.length)}
 `);
         }));
@@ -106,9 +107,9 @@ ${chalk.blue('🎯 Target URLs:')} ${chalk.blue.bold(URLS.length)}
         await Promise.all(chunk);
     }
 
-    // Final summary
+    // Clear console before final summary
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-    process.stdout.write('\x1Bc');
+    console.clear();
     console.log(`
 ${chalk.green.bold('✨ Batch Completed!')}
 ${chalk.yellow.bold('📊 Final Results:')}
