@@ -26,6 +26,7 @@ jobs:
     concurrency:
       group: ${{ github.ref }}
       cancel-in-progress: false
+
     steps:
       - uses: actions/checkout@v3
 
@@ -37,15 +38,18 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Check required secrets
-        if: ${{ env.TARGET_URLS == '' }}
+      - name: Check TARGET_URLS
+        id: check_env
         run: |
-          echo "Error: TARGET_URLS secret is not set"
-          exit 1
+          if [ -z "${{ secrets.TARGET_URLS }}" ]; then
+            echo "TARGET_URLS is not set"
+            exit 1
+          fi
+          echo "TARGET_URLS is properly configured"
 
       - name: Deploy requests
         env:
-          TARGET_URLS: ${{ env.TARGET_URLS }}
+          TARGET_URLS: ${{ secrets.TARGET_URLS }}
         run: |
           bun run src/index.ts &
           bun run src/index.ts &
