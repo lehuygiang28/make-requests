@@ -1,0 +1,41 @@
+{
+    "name": "make-requests",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/lehuygiang28/make-requests.git"
+    },
+    "version": "0.0.1",
+    "description": "Make requests",
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "files": ["lib"],
+    "scripts": {
+        "build": "rimraf ./lib && tsc",
+        "prepare": "npm run build",
+        "test": "jest",
+        "test:cov": "jest --coverage",
+        "example": "npx ts-node example/index.ts",
+        "lint": "npx @biomejs/biome lint .",
+        "lint:fix": "npx @biomejs/biome lint . --write",
+        "format": "npx @biomejs/biome format .",
+        "format:fix": "npx @biomejs/biome format --write .",
+        "release": "release-it",
+        "release:pre": "release-it prerelease",
+        "release:patch": "release-it patch",
+        "release:minor": "release-it minor",
+        "release:major": "release-it major"
+    },
+    "author": "lehuygiang28 <lehuygiang28@gmail.com>",
+    "license": "MIT",
+    "devDependencies": {
+        "@biomejs/biome": "1.8.3",
+        "@tsconfig/recommended": "^1.0.7",
+        "@types/jest": "^29.5.12",
+        "@types/node": "^20.14.12",
+        "release-it": "^17.6.0",
+        "rimraf": "^6.0.1",
+        "ts-jest": "^29.2.3",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.5.4"
+    }
+}
