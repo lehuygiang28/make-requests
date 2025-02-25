@@ -27,9 +27,11 @@ const generateIP = () =>
     `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
 
 // Get random item from array
-const getRandomItem = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)];
+const getRandomItem = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
-async function makeRequest(): Promise<void> {
+import chalk from 'chalk';
+
+async function makeRequest(): Promise<boolean> {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -59,22 +61,44 @@ async function makeRequest(): Promise<void> {
         // Add random delay before the request
         await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 1000)));
 
-        await fetch(targetUrl, {
+        const response = await fetch(targetUrl, {
             signal: controller.signal,
             headers,
             method: Math.random() > 0.9 ? 'POST' : 'GET',
         });
 
         clearTimeout(timeoutId);
+        return response.ok; // Returns true if status is 2xx
     } catch (error) {
-        // Ignore errors
+        return false;
     }
 }
 
 async function sendRequests(): Promise<void> {
+    let successCount = 0;
+    let failureCount = 0;
+    const startTime = Date.now();
+
     const requests = Array(REQUESTS)
         .fill(null)
-        .map(() => makeRequest());
+        .map(() => makeRequest().then(success => {
+            if (success) successCount++;
+            else failureCount++;
+
+            // Clear console and update metrics
+            const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
+            const successRate = ((successCount / (successCount + failureCount)) * 100).toFixed(2);
+            process.stdout.write('\x1Bc');
+            console.log(`
+${chalk.blue.bold('🚀 Requests in progress...')}
+${chalk.yellow.bold('📊 Metrics:')}
+${chalk.green('✅ Successful:')} ${chalk.green.bold(successCount)}
+${chalk.red('❌ Failed:')} ${chalk.red.bold(failureCount)}
+${chalk.cyan('⏱️  Time Elapsed:')} ${chalk.cyan.bold(elapsedTime + 's')}
+${chalk.magenta('📈 Success Rate:')} ${chalk.magenta.bold(successRate + '%')}
+${chalk.blue('🎯 Target URLs:')} ${chalk.blue.bold(URLS.length)}
+`);
+        }));
 
     // Process requests in chunks to manage concurrency
     for (let i = 0; i < requests.length; i += CONCURRENCY) {
@@ -82,7 +106,18 @@ async function sendRequests(): Promise<void> {
         await Promise.all(chunk);
     }
 
-    console.log(`Completed ${REQUESTS} requests`);
+    // Final summary
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    process.stdout.write('\x1Bc');
+    console.log(`
+${chalk.green.bold('✨ Batch Completed!')}
+${chalk.yellow.bold('📊 Final Results:')}
+${chalk.green('✅ Successful:')} ${chalk.green.bold(successCount)}
+${chalk.red('❌ Failed:')} ${chalk.red.bold(failureCount)}
+${chalk.cyan('⏱️  Total Time:')} ${chalk.cyan.bold(totalTime + 's')}
+${chalk.magenta('📈 Success Rate:')} ${chalk.magenta.bold(((successCount / REQUESTS) * 100).toFixed(2) + '%')}
+${chalk.blue('🎯 Target URLs:')} ${chalk.blue.bold(URLS.length)}
+`);
 }
 
 // Infinite loop
