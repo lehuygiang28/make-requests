@@ -1,0 +1,49 @@
+name: run-it
+
+on:
+  workflow_dispatch:
+  push:
+    branches: main
+  schedule:
+    # Every 2 hours from 00:00 to 22:00
+    - cron: '0 0 * * *'   # 00:00
+    - cron: '0 2 * * *'   # 02:00
+    - cron: '0 4 * * *'   # 04:00
+    - cron: '0 6 * * *'   # 06:00
+    - cron: '0 8 * * *'   # 08:00
+    - cron: '0 10 * * *'  # 10:00
+    - cron: '0 12 * * *'  # 12:00
+    - cron: '0 14 * * *'  # 14:00
+    - cron: '0 16 * * *'  # 16:00
+    - cron: '0 18 * * *'  # 18:00
+    - cron: '0 20 * * *'  # 20:00
+    - cron: '0 22 * * *'  # 22:00
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # Set a 6-hour timeout for each job
+    concurrency:
+      group: ${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Bun Runtime
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Deploy bots
+        env:
+          TARGET_URLS: ${{ secrets.TARGET_URLS }}
+        run: |
+          bun run src/index.ts &
+          bun run src/index.ts &
+          bun run src/index.ts &
+          bun run src/index.ts &
+          bun run src/index.ts &
+          sleep 21600
